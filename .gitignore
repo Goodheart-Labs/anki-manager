@@ -10,6 +10,20 @@ venv/
 
 # Anki exports (keep directory but not the files)
 anki_exports/*.txt
+anki_exports/*/*.txt
+
+# Personal Anki decks and data
+anki_decks/
+Root deck_csv/
+tag_validation_report.json
+deck_duplicates.json
+*_duplicates.json
+*_duplicate_report.txt
+*_suggestions.json
+*_cleaned.json
+
+# Claude-specific files
+.claude/
 
 # IDE
 .vscode/
@@ -25,3 +39,12 @@ Thumbs.db
 *.tmp
 *.bak
 *~
+
+# APKG files (personal deck files)
+*.apkg
+*.colpkg
+
+# Backup and working files
+*_backup.json
+*_original.json
+deck_original.json

@@ -12,16 +12,14 @@
 ### Common Text Formats to Handle
 
 1. **Line-by-line** (poems, speeches, songs)
+   - Create a card with Front:"[work name] opening line" Back: [First line]
    - Each line becomes front, next line becomes back
+   - Tag with stanza1, stanza2 etc
    - Creates a chain for memorization
 
 2. **Delimiter-based** (lyrics with spacing, CSV data)
    - Front and back separated by consistent delimiter (tabs, multiple spaces, etc)
    - Good for pre-formatted flashcard data
-
-3. **Verse/Paragraph** (longer texts)
-   - Blank lines separate cards
-   - Each paragraph/verse becomes a complete card
 
 4. **Cloze deletion** (fill-in-the-blank)
    - Text with {bracketed} words to hide
@@ -45,9 +43,6 @@ anki-manager/
 ├── text_to_anki.py        # Core parsing functions
 ├── anki_validator.py      # Original validator (needs html5lib)
 └── anki_exports/          # All exported files go here
-    ├── Mark_Antony_Speech_20250706_005656.txt
-    ├── yeats_second_coming_20250706_003519.txt
-    └── spice_girls_lyrics_20250705_235801.txt
 ```
 
 ### Usage Examples
