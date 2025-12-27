@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mochi Cards</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a2e;
+            color: #eee;
+            min-height: 100vh;
+        }
+        h1 { color: #fff; display: flex; align-items: center; gap: 10px; }
+        .card {
+            background: #16213e;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        label { display: block; margin-bottom: 6px; color: #aaa; font-size: 14px; }
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 16px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            font-size: 16px;
+            background: #0f0f23;
+            color: #fff;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #6c5ce7;
+        }
+        textarea { min-height: 120px; resize: vertical; }
+        button {
+            background: #6c5ce7;
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            font-weight: 600;
+        }
+        button:hover { background: #5b4cdb; }
+        button:disabled { background: #444; cursor: not-allowed; }
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background: #333;
+            border: none;
+            color: #aaa;
+            font-size: 14px;
+            border-radius: 8px 8px 0 0;
+        }
+        .tab.active { background: #6c5ce7; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: none;
+        }
+        .success { background: #1e4620; color: #8eff8e; display: block; }
+        .error { background: #4a1515; color: #ff8e8e; display: block; }
+        .help { color: #666; font-size: 13px; margin-bottom: 12px; }
+        .settings-btn {
+            background: transparent;
+            border: 1px solid #444;
+            color: #888;
+            padding: 8px 16px;
+            font-size: 13px;
+            width: auto;
+            position: absolute;
+            right: 20px;
+            top: 20px;
+        }
+        .settings-btn:hover { border-color: #666; color: #aaa; background: transparent; }
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        .modal.show { display: flex; }
+        .modal-content {
+            background: #16213e;
+            padding: 24px;
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+        }
+        .deck-list { margin-top: 10px; font-size: 13px; color: #888; }
+        .deck-item { padding: 4px 0; }
+        .close-btn {
+            background: #333;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <button class="settings-btn" onclick="showSettings()">⚙️ Settings</button>
+    <h1>🍡 Mochi Cards</h1>
+
+    <div id="setup" class="card" style="display: none;">
+        <h3>Setup Required</h3>
+        <p>Enter your Mochi API key to get started. Get it from your <a href="https://app.mochi.cards/settings" target="_blank" style="color: #6c5ce7;">Mochi settings</a>.</p>
+        <label>API Key</label>
+        <input type="password" id="setup-api-key" placeholder="Your Mochi API key">
+        <button onclick="saveSetup()">Save & Continue</button>
+    </div>
+
+    <div id="main" style="display: none;">
+        <div id="message" class="message"></div>
+
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('single')">Single Card</button>
+            <button class="tab" onclick="showTab('bulk')">Bulk Add</button>
+        </div>
+
+        <div id="single" class="tab-content active">
+            <div class="card">
+                <label>Deck</label>
+                <select id="deck"></select>
+
+                <label>Front (Question)</label>
+                <input type="text" id="front" placeholder="le chat">
+
+                <label>Back (Answer)</label>
+                <input type="text" id="back" placeholder="the cat (m)">
+
+                <button onclick="addCard()">Add Card</button>
+            </div>
+        </div>
+
+        <div id="bulk" class="tab-content">
+            <div class="card">
+                <label>Deck</label>
+                <select id="bulk-deck"></select>
+
+                <p class="help">One card per line: front | back</p>
+                <textarea id="bulk-cards" placeholder="le chat | the cat (m)
+la maison | the house (f)
+le chien | the dog (m)"></textarea>
+
+                <button onclick="addBulkCards()">Add All Cards</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <h3>Settings</h3>
+            <label>API Key</label>
+            <input type="password" id="settings-api-key">
+            <label>Default Deck ID (optional)</label>
+            <input type="text" id="settings-deck" placeholder="e.g. 5LvMpMNe">
+            <div class="deck-list" id="deck-list"></div>
+            <button onclick="saveSettings()">Save</button>
+            <button class="close-btn" onclick="hideSettings()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api/mochi';
+        let decks = [];
+
+        function getConfig() {
+            return {
+                apiKey: localStorage.getItem('mochi_api_key') || '',
+                defaultDeck: localStorage.getItem('mochi_default_deck') || ''
+            };
+        }
+
+        function showMessage(text, isError) {
+            const msg = document.getElementById('message');
+            msg.textContent = text;
+            msg.className = 'message ' + (isError ? 'error' : 'success');
+            setTimeout(() => { msg.className = 'message'; }, 4000);
+        }
+
+        function showTab(tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.getElementById(tab).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        function showSettings() {
+            const config = getConfig();
+            document.getElementById('settings-api-key').value = config.apiKey;
+            document.getElementById('settings-deck').value = config.defaultDeck;
+            document.getElementById('deck-list').innerHTML = decks.map(d =>
+                `<div class="deck-item">${d.name}: <code>${d.id}</code></div>`
+            ).join('');
+            document.getElementById('settings-modal').classList.add('show');
+        }
+
+        function hideSettings() {
+            document.getElementById('settings-modal').classList.remove('show');
+        }
+
+        function saveSettings() {
+            localStorage.setItem('mochi_api_key', document.getElementById('settings-api-key').value);
+            localStorage.setItem('mochi_default_deck', document.getElementById('settings-deck').value);
+            hideSettings();
+            init();
+        }
+
+        function saveSetup() {
+            const key = document.getElementById('setup-api-key').value;
+            if (!key) return;
+            localStorage.setItem('mochi_api_key', key);
+            init();
+        }
+
+        async function apiCall(endpoint, method = 'GET', body = null) {
+            const config = getConfig();
+            const resp = await fetch(API_BASE, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    apiKey: config.apiKey,
+                    endpoint,
+                    method,
+                    body
+                })
+            });
+            return resp.json();
+        }
+
+        async function loadDecks() {
+            try {
+                const data = await apiCall('decks/', 'GET');
+                if (data.error) throw new Error(data.error);
+                decks = data.docs || [];
+                const config = getConfig();
+                const options = decks.map(d =>
+                    `<option value="${d.id}" ${d.id === config.defaultDeck ? 'selected' : ''}>${d.name}</option>`
+                ).join('');
+                document.getElementById('deck').innerHTML = options;
+                document.getElementById('bulk-deck').innerHTML = options;
+            } catch (e) {
+                showMessage('Failed to load decks: ' + e.message, true);
+            }
+        }
+
+        async function addCard() {
+            const front = document.getElementById('front').value.trim();
+            const back = document.getElementById('back').value.trim();
+            const deckId = document.getElementById('deck').value;
+
+            if (!front || !back) {
+                showMessage('Please fill in both front and back', true);
+                return;
+            }
+
+            try {
+                const data = await apiCall('cards/', 'POST', {
+                    content: front + '\n---\n' + back,
+                    'deck-id': deckId
+                });
+                if (data.error) throw new Error(data.error);
+                showMessage('Card added!');
+                document.getElementById('front').value = '';
+                document.getElementById('back').value = '';
+                document.getElementById('front').focus();
+            } catch (e) {
+                showMessage('Error: ' + e.message, true);
+            }
+        }
+
+        async function addBulkCards() {
+            const text = document.getElementById('bulk-cards').value.trim();
+            const deckId = document.getElementById('bulk-deck').value;
+            const lines = text.split('\n').filter(l => l.trim());
+
+            if (!lines.length) {
+                showMessage('Please enter some cards', true);
+                return;
+            }
+
+            let added = 0, failed = 0;
+            for (const line of lines) {
+                const [front, back] = line.split('|').map(s => s.trim());
+                if (!front || !back) { failed++; continue; }
+
+                try {
+                    await apiCall('cards/', 'POST', {
+                        content: front + '\n---\n' + back,
+                        'deck-id': deckId
+                    });
+                    added++;
+                } catch (e) { failed++; }
+            }
+
+            if (failed) {
+                showMessage(`Added ${added}, failed ${failed}`, true);
+            } else {
+                showMessage(`Added ${added} cards!`);
+                document.getElementById('bulk-cards').value = '';
+            }
+        }
+
+        async function init() {
+            const config = getConfig();
+            if (!config.apiKey) {
+                document.getElementById('setup').style.display = 'block';
+                document.getElementById('main').style.display = 'none';
+                return;
+            }
+            document.getElementById('setup').style.display = 'none';
+            document.getElementById('main').style.display = 'block';
+            await loadDecks();
+        }
+
+        document.getElementById('front').addEventListener('keypress', e => {
+            if (e.key === 'Enter') document.getElementById('back').focus();
+        });
+        document.getElementById('back').addEventListener('keypress', e => {
+            if (e.key === 'Enter') addCard();
+        });
+
+        init();
+    </script>
+</body>
+</html>
