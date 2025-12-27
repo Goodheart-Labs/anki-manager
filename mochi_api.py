@@ -5,7 +5,9 @@ Mochi Cards API integration for creating and managing flashcards.
 API Documentation: https://mochi.cards/docs/api/
 """
 
+import argparse
 import os
+import sys
 import requests
 from typing import Optional, List, Dict, Any
 from base64 import b64encode
@@ -231,22 +233,221 @@ def create_cards_from_list(cards: List[tuple], deck_id: Optional[str] = None) ->
     return created
 
 
-if __name__ == "__main__":
-    # Example usage
+def get_all_cards(mochi: MochiAPI, deck_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Fetch all cards, handling pagination."""
+    all_cards = []
+    bookmark = None
+    while True:
+        result = mochi.list_cards(deck_id=deck_id, bookmark=bookmark)
+        all_cards.extend(result.get("docs", []))
+        bookmark = result.get("bookmark")
+        if not bookmark:
+            break
+    return all_cards
+
+
+def get_all_decks(mochi: MochiAPI) -> List[Dict[str, Any]]:
+    """Fetch all decks, handling pagination."""
+    all_decks = []
+    bookmark = None
+    while True:
+        result = mochi.list_decks(bookmark=bookmark)
+        all_decks.extend(result.get("docs", []))
+        bookmark = result.get("bookmark")
+        if not bookmark:
+            break
+    return all_decks
+
+
+def cmd_decks(args):
+    """List all decks."""
     mochi = MochiAPI()
+    decks = get_all_decks(mochi)
 
-    # List decks
-    print("Listing decks...")
-    decks = mochi.list_decks()
-    for deck in decks.get("docs", []):
-        print(f"  - {deck.get('name')} (ID: {deck.get('id')})")
+    if not decks:
+        print("No decks found.")
+        return
 
-    # Create a test card
-    print("\nCreating test card...")
-    card = mochi.create_basic_card(
-        front="What is the capital of France?",
-        back="Paris"
-    )
-    print(f"Created card with ID: {card.get('id')}")
+    print(f"Found {len(decks)} deck(s):\n")
+    for deck in decks:
+        card_count = deck.get("cards-count", "?")
+        print(f"  {deck.get('name')}")
+        print(f"    ID: {deck.get('id')}")
+        print(f"    Cards: {card_count}")
+        if deck.get("parent-id"):
+            print(f"    Parent: {deck.get('parent-id')}")
+        print()
 
     mochi.close()
+
+
+def cmd_cards(args):
+    """List cards in a deck."""
+    mochi = MochiAPI()
+    deck_id = args.deck_id or mochi.default_deck_id
+
+    if not deck_id:
+        print("Error: No deck specified. Use --deck-id or set MOCHI_DEFAULT_DECK_ID")
+        sys.exit(1)
+
+    cards = get_all_cards(mochi, deck_id=deck_id)
+
+    if not cards:
+        print(f"No cards found in deck {deck_id}")
+        return
+
+    print(f"Found {len(cards)} card(s):\n")
+    for i, card in enumerate(cards, 1):
+        content = card.get("content", "")
+        # Split on --- to get front/back
+        parts = content.split("---", 1)
+        front = parts[0].strip()[:60]
+        if len(parts[0].strip()) > 60:
+            front += "..."
+
+        print(f"{i}. {front}")
+        print(f"   ID: {card.get('id')}")
+        if card.get("tags"):
+            print(f"   Tags: {', '.join(card.get('tags', []))}")
+        print()
+
+    mochi.close()
+
+
+def cmd_add_deck(args):
+    """Create a new deck."""
+    mochi = MochiAPI()
+    deck = mochi.create_deck(args.name, parent_id=args.parent)
+    print(f"Created deck: {deck.get('name')}")
+    print(f"ID: {deck.get('id')}")
+    mochi.close()
+
+
+def cmd_add_card(args):
+    """Create a new card."""
+    mochi = MochiAPI()
+    deck_id = args.deck_id or mochi.default_deck_id
+
+    if not deck_id:
+        print("Error: No deck specified. Use --deck-id or set MOCHI_DEFAULT_DECK_ID")
+        sys.exit(1)
+
+    tags = args.tags.split(",") if args.tags else None
+
+    card = mochi.create_basic_card(
+        front=args.front,
+        back=args.back,
+        deck_id=deck_id,
+        tags=tags
+    )
+    print(f"Created card: {card.get('id')}")
+    mochi.close()
+
+
+def cmd_view(args):
+    """View a specific card."""
+    mochi = MochiAPI()
+    card = mochi.get_card(args.card_id)
+
+    print(f"Card ID: {card.get('id')}")
+    print(f"Deck ID: {card.get('deck-id')}")
+    if card.get("tags"):
+        print(f"Tags: {', '.join(card.get('tags', []))}")
+    print(f"\n--- Content ---\n{card.get('content', '')}\n")
+
+    mochi.close()
+
+
+def cmd_due(args):
+    """Show cards due for review."""
+    mochi = MochiAPI()
+    result = mochi.get_due_cards(date=args.date)
+    cards = result.get("cards", [])
+
+    if not cards:
+        print("No cards due for review!")
+        return
+
+    print(f"{len(cards)} card(s) due:\n")
+    for card in cards:
+        content = card.get("content", "")
+        front = content.split("---", 1)[0].strip()[:50]
+        print(f"  - {front}...")
+        print(f"    ID: {card.get('id')}")
+
+    mochi.close()
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Mochi Cards CLI - Manage your flashcards",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  %(prog)s decks                     List all decks
+  %(prog)s cards                     List cards in default deck
+  %(prog)s cards --deck-id ABC123    List cards in specific deck
+  %(prog)s add-deck "My New Deck"    Create a new deck
+  %(prog)s add-card "Q" "A"          Add a card to default deck
+  %(prog)s view CARD_ID              View a specific card
+  %(prog)s due                       Show cards due today
+
+Environment variables:
+  MOCHI_API_KEY          Your Mochi API key (required)
+  MOCHI_DEFAULT_DECK_ID  Default deck for card operations
+"""
+    )
+
+    subparsers = parser.add_subparsers(dest="command", help="Commands")
+
+    # decks command
+    decks_parser = subparsers.add_parser("decks", help="List all decks")
+    decks_parser.set_defaults(func=cmd_decks)
+
+    # cards command
+    cards_parser = subparsers.add_parser("cards", help="List cards in a deck")
+    cards_parser.add_argument("--deck-id", "-d", help="Deck ID (uses default if not set)")
+    cards_parser.set_defaults(func=cmd_cards)
+
+    # add-deck command
+    add_deck_parser = subparsers.add_parser("add-deck", help="Create a new deck")
+    add_deck_parser.add_argument("name", help="Name for the new deck")
+    add_deck_parser.add_argument("--parent", "-p", help="Parent deck ID")
+    add_deck_parser.set_defaults(func=cmd_add_deck)
+
+    # add-card command
+    add_card_parser = subparsers.add_parser("add-card", help="Create a new card")
+    add_card_parser.add_argument("front", help="Front side (question)")
+    add_card_parser.add_argument("back", help="Back side (answer)")
+    add_card_parser.add_argument("--deck-id", "-d", help="Deck ID (uses default if not set)")
+    add_card_parser.add_argument("--tags", "-t", help="Comma-separated tags")
+    add_card_parser.set_defaults(func=cmd_add_card)
+
+    # view command
+    view_parser = subparsers.add_parser("view", help="View a specific card")
+    view_parser.add_argument("card_id", help="Card ID to view")
+    view_parser.set_defaults(func=cmd_view)
+
+    # due command
+    due_parser = subparsers.add_parser("due", help="Show cards due for review")
+    due_parser.add_argument("--date", help="Date (YYYY-MM-DD), defaults to today")
+    due_parser.set_defaults(func=cmd_due)
+
+    args = parser.parse_args()
+
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+
+    try:
+        args.func(args)
+    except ValueError as e:
+        print(f"Error: {e}")
+        sys.exit(1)
+    except requests.exceptions.HTTPError as e:
+        print(f"API Error: {e}")
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

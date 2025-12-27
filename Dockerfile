@@ -5,6 +5,6 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY anki_validator.py .
+COPY mochi_api.py .
 
-ENTRYPOINT ["python", "anki_validator.py"] 
+ENTRYPOINT ["python", "mochi_api.py"]

@@ -1,21 +1,26 @@
-# Next Session: AnkiConnect Setup
+# Mochi Manager
 
-## TODO for next session:
+CLI and Python library for Mochi Cards flashcards.
 
-1. **Install AnkiConnect in Anki**
-   - Add-on code: 2055492159
-   - Keep Anki running in background
+## Quick reference
 
-2. **Create AnkiConnect integration**
-   - Will create anki_sync.py for file watching
-   - Will create anki_connect.py for API wrapper
-   - Markdown files in decks/ will auto-sync to Anki
+```bash
+# List decks
+python mochi_api.py decks
 
-3. **Current status**
-   - Decks are in markdown format in `decks/` folder
-   - Owl Cards experiment saved in owl-cards-experiment branch
-   - Ready to set up automatic sync
+# List cards
+python mochi_api.py cards
 
-## Note: Don't tidy up too much
-- Keep personal notes and env variables separate
-- Both Owl and AnkiConnect approaches available
+# Add card
+python mochi_api.py add-card "front" "back"
+
+# Add deck
+python mochi_api.py add-deck "Deck Name"
+```
+
+## Environment
+
+```
+MOCHI_API_KEY=da79f8d223ce95094ba5cab7
+MOCHI_DEFAULT_DECK_ID=XFQTi03K
+```
