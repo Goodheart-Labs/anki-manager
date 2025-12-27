@@ -3,7 +3,7 @@
 
 from mochi_api import MochiAPI
 
-DECK_ID = "XFQTi03K"
+DECK_ID = "5LvMpMNe"  # French deck
 
 cards = [
     ("la viande", "meat (f)"),
