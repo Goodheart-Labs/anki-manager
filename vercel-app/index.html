@@ -15,7 +15,7 @@
             color: #eee;
             min-height: 100vh;
         }
-        h1 { color: #fff; display: flex; align-items: center; gap: 10px; }
+        h1 { color: #fff; }
         .card {
             background: #16213e;
             padding: 20px;
@@ -37,7 +37,7 @@
             outline: none;
             border-color: #6c5ce7;
         }
-        textarea { min-height: 120px; resize: vertical; }
+        textarea { min-height: 150px; resize: vertical; }
         button {
             background: #6c5ce7;
             color: white;
@@ -51,11 +51,7 @@
         }
         button:hover { background: #5b4cdb; }
         button:disabled { background: #444; cursor: not-allowed; }
-        .tabs {
-            display: flex;
-            gap: 4px;
-            margin-bottom: 20px;
-        }
+        .tabs { display: flex; gap: 4px; margin-bottom: 20px; }
         .tab {
             padding: 10px 20px;
             cursor: pointer;
@@ -77,116 +73,53 @@
         .success { background: #1e4620; color: #8eff8e; display: block; }
         .error { background: #4a1515; color: #ff8e8e; display: block; }
         .help { color: #666; font-size: 13px; margin-bottom: 12px; }
-        .settings-btn {
-            background: transparent;
-            border: 1px solid #444;
-            color: #888;
-            padding: 8px 16px;
-            font-size: 13px;
-            width: auto;
-            position: absolute;
-            right: 20px;
-            top: 20px;
-        }
-        .settings-btn:hover { border-color: #666; color: #aaa; background: transparent; }
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.8);
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
-        }
-        .modal.show { display: flex; }
-        .modal-content {
-            background: #16213e;
-            padding: 24px;
-            border-radius: 12px;
-            max-width: 500px;
-            width: 90%;
-        }
-        .deck-list { margin-top: 10px; font-size: 13px; color: #888; }
-        .deck-item { padding: 4px 0; }
-        .close-btn {
-            background: #333;
-            margin-top: 10px;
-        }
+        .count { color: #888; font-size: 14px; margin-top: -10px; margin-bottom: 16px; }
     </style>
 </head>
 <body>
-    <button class="settings-btn" onclick="showSettings()">⚙️ Settings</button>
     <h1>🍡 Mochi Cards</h1>
 
-    <div id="setup" class="card" style="display: none;">
-        <h3>Setup Required</h3>
-        <p>Enter your Mochi API key to get started. Get it from your <a href="https://app.mochi.cards/settings" target="_blank" style="color: #6c5ce7;">Mochi settings</a>.</p>
-        <label>API Key</label>
-        <input type="password" id="setup-api-key" placeholder="Your Mochi API key">
-        <button onclick="saveSetup()">Save & Continue</button>
+    <div id="message" class="message"></div>
+
+    <div class="tabs">
+        <button class="tab active" onclick="showTab('single')">Single Card</button>
+        <button class="tab" onclick="showTab('bulk')">Bulk Add</button>
     </div>
 
-    <div id="main" style="display: none;">
-        <div id="message" class="message"></div>
+    <div id="single" class="tab-content active">
+        <div class="card">
+            <label>Deck</label>
+            <select id="deck"></select>
 
-        <div class="tabs">
-            <button class="tab active" onclick="showTab('single')">Single Card</button>
-            <button class="tab" onclick="showTab('bulk')">Bulk Add</button>
+            <label>Front (Question)</label>
+            <input type="text" id="front" placeholder="le chat" autofocus>
+
+            <label>Back (Answer)</label>
+            <input type="text" id="back" placeholder="the cat (m)">
+
+            <button onclick="addCard()">Add Card</button>
         </div>
+    </div>
 
-        <div id="single" class="tab-content active">
-            <div class="card">
-                <label>Deck</label>
-                <select id="deck"></select>
+    <div id="bulk" class="tab-content">
+        <div class="card">
+            <label>Deck</label>
+            <select id="bulk-deck"></select>
 
-                <label>Front (Question)</label>
-                <input type="text" id="front" placeholder="le chat">
-
-                <label>Back (Answer)</label>
-                <input type="text" id="back" placeholder="the cat (m)">
-
-                <button onclick="addCard()">Add Card</button>
-            </div>
-        </div>
-
-        <div id="bulk" class="tab-content">
-            <div class="card">
-                <label>Deck</label>
-                <select id="bulk-deck"></select>
-
-                <p class="help">One card per line: front | back</p>
-                <textarea id="bulk-cards" placeholder="le chat | the cat (m)
+            <label>Cards (one per line: front | back)</label>
+            <p class="help">Example: le chat | the cat (m)</p>
+            <textarea id="bulk-cards" placeholder="le chat | the cat (m)
 la maison | the house (f)
 le chien | the dog (m)"></textarea>
+            <div class="count" id="line-count">0 cards</div>
 
-                <button onclick="addBulkCards()">Add All Cards</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="settings-modal" class="modal">
-        <div class="modal-content">
-            <h3>Settings</h3>
-            <label>API Key</label>
-            <input type="password" id="settings-api-key">
-            <label>Default Deck ID (optional)</label>
-            <input type="text" id="settings-deck" placeholder="e.g. 5LvMpMNe">
-            <div class="deck-list" id="deck-list"></div>
-            <button onclick="saveSettings()">Save</button>
-            <button class="close-btn" onclick="hideSettings()">Close</button>
+            <button onclick="addBulkCards()">Add All Cards</button>
         </div>
     </div>
 
     <script>
         const API_BASE = '/api/mochi';
-        let decks = [];
-
-        function getConfig() {
-            return {
-                apiKey: localStorage.getItem('mochi_api_key') || '',
-                defaultDeck: localStorage.getItem('mochi_default_deck') || ''
-            };
-        }
+        const DEFAULT_DECK = '5LvMpMNe'; // French deck
 
         function showMessage(text, isError) {
             const msg = document.getElementById('message');
@@ -202,45 +135,11 @@ le chien | the dog (m)"></textarea>
             event.target.classList.add('active');
         }
 
-        function showSettings() {
-            const config = getConfig();
-            document.getElementById('settings-api-key').value = config.apiKey;
-            document.getElementById('settings-deck').value = config.defaultDeck;
-            document.getElementById('deck-list').innerHTML = decks.map(d =>
-                `<div class="deck-item">${d.name}: <code>${d.id}</code></div>`
-            ).join('');
-            document.getElementById('settings-modal').classList.add('show');
-        }
-
-        function hideSettings() {
-            document.getElementById('settings-modal').classList.remove('show');
-        }
-
-        function saveSettings() {
-            localStorage.setItem('mochi_api_key', document.getElementById('settings-api-key').value);
-            localStorage.setItem('mochi_default_deck', document.getElementById('settings-deck').value);
-            hideSettings();
-            init();
-        }
-
-        function saveSetup() {
-            const key = document.getElementById('setup-api-key').value;
-            if (!key) return;
-            localStorage.setItem('mochi_api_key', key);
-            init();
-        }
-
         async function apiCall(endpoint, method = 'GET', body = null) {
-            const config = getConfig();
             const resp = await fetch(API_BASE, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    apiKey: config.apiKey,
-                    endpoint,
-                    method,
-                    body
-                })
+                body: JSON.stringify({ endpoint, method, body })
             });
             return resp.json();
         }
@@ -249,10 +148,9 @@ le chien | the dog (m)"></textarea>
             try {
                 const data = await apiCall('decks/', 'GET');
                 if (data.error) throw new Error(data.error);
-                decks = data.docs || [];
-                const config = getConfig();
+                const decks = data.docs || [];
                 const options = decks.map(d =>
-                    `<option value="${d.id}" ${d.id === config.defaultDeck ? 'selected' : ''}>${d.name}</option>`
+                    `<option value="${d.id}" ${d.id === DEFAULT_DECK ? 'selected' : ''}>${d.name}</option>`
                 ).join('');
                 document.getElementById('deck').innerHTML = options;
                 document.getElementById('bulk-deck').innerHTML = options;
@@ -289,10 +187,10 @@ le chien | the dog (m)"></textarea>
         async function addBulkCards() {
             const text = document.getElementById('bulk-cards').value.trim();
             const deckId = document.getElementById('bulk-deck').value;
-            const lines = text.split('\n').filter(l => l.trim());
+            const lines = text.split('\n').filter(l => l.includes('|'));
 
             if (!lines.length) {
-                showMessage('Please enter some cards', true);
+                showMessage('Please enter some cards (use | to separate front and back)', true);
                 return;
             }
 
@@ -302,10 +200,11 @@ le chien | the dog (m)"></textarea>
                 if (!front || !back) { failed++; continue; }
 
                 try {
-                    await apiCall('cards/', 'POST', {
+                    const data = await apiCall('cards/', 'POST', {
                         content: front + '\n---\n' + back,
                         'deck-id': deckId
                     });
+                    if (data.error) throw new Error(data.error);
                     added++;
                 } catch (e) { failed++; }
             }
@@ -315,19 +214,14 @@ le chien | the dog (m)"></textarea>
             } else {
                 showMessage(`Added ${added} cards!`);
                 document.getElementById('bulk-cards').value = '';
+                updateLineCount();
             }
         }
 
-        async function init() {
-            const config = getConfig();
-            if (!config.apiKey) {
-                document.getElementById('setup').style.display = 'block';
-                document.getElementById('main').style.display = 'none';
-                return;
-            }
-            document.getElementById('setup').style.display = 'none';
-            document.getElementById('main').style.display = 'block';
-            await loadDecks();
+        function updateLineCount() {
+            const text = document.getElementById('bulk-cards').value;
+            const count = text.split('\n').filter(l => l.includes('|')).length;
+            document.getElementById('line-count').textContent = count + ' card' + (count !== 1 ? 's' : '');
         }
 
         document.getElementById('front').addEventListener('keypress', e => {
@@ -336,8 +230,9 @@ le chien | the dog (m)"></textarea>
         document.getElementById('back').addEventListener('keypress', e => {
             if (e.key === 'Enter') addCard();
         });
+        document.getElementById('bulk-cards').addEventListener('input', updateLineCount);
 
-        init();
+        loadDecks();
     </script>
 </body>
 </html>
