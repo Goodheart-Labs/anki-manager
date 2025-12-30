@@ -1,6 +1,0 @@
-{
-    "rewrites": [
-        { "source": "/api/mochi", "destination": "/api/mochi" },
-        { "source": "/(.*)", "destination": "/index.html" }
-    ]
-}
